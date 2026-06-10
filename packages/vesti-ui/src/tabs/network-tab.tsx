@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import type { StorageApi, UiThemeMode } from "../types";
+import type { DashboardLabels } from "../types";
 import { useLibraryData } from "../contexts/library-data";
 import { getPlatformBadgeStyle, getPlatformLabel } from "../constants/platform";
 import { GraphLegend } from "./network/GraphLegend";
@@ -23,22 +24,23 @@ interface NetworkTabProps {
   themeMode?: UiThemeMode;
   isActive?: boolean;
   onSelectConversation?: (id: number) => void;
+  labels?: DashboardLabels["network"];
 }
 
 type EdgeStatus = "idle" | "loading" | "ready" | "error";
 
 const PLAYBACK_DURATION_MS = 8_000;
 
-function formatDefaultInfo(totalDays: number) {
-  if (totalDays <= 0) return "No conversations captured yet.";
-  return "This replay runs the full timeline in 8 seconds, even when everything was captured today.";
+function formatDefaultInfo(totalDays: number, labels: DashboardLabels["network"]) {
+  if (totalDays <= 0) return labels.noConversationsYet;
+  return labels.replayInfo;
 }
 
-function formatBirthInfo(label: string, platform: string) {
+function formatBirthInfo(label: string, platform: string, labels: DashboardLabels["network"]) {
   if (label.trim().toLowerCase() === platform.trim().toLowerCase()) {
-    return `+ New conversation on ${platform}`;
+    return labels.newConversationOn.replace("{platform}", platform);
   }
-  return `+ ${label} \u00b7 ${platform}`;
+  return labels.conversationOn.replace("{label}", label).replace("{platform}", platform);
 }
 
 function formatStartedLabel(timestamp: number) {
@@ -54,13 +56,15 @@ export function NetworkTab({
   themeMode = "light",
   isActive = true,
   onSelectConversation,
+  labels: providedLabels,
 }: NetworkTabProps) {
+  const labels = providedLabels ?? ({} as DashboardLabels["network"]);
   const { conversations, topics } = useLibraryData();
   const [currentDay, setCurrentDay] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [scrubbing, setScrubbing] = useState(false);
   const [playbackToken, setPlaybackToken] = useState(0);
-  const [infoText, setInfoText] = useState("No conversations captured yet.");
+  const [infoText, setInfoText] = useState(labels.noConversationsYet ?? "No conversations captured yet.");
   const [graphResetToken, setGraphResetToken] = useState(0);
   const [scrubToken, setScrubToken] = useState(0);
   const [edgeStatus, setEdgeStatus] = useState<EdgeStatus>("idle");
@@ -210,7 +214,7 @@ export function NetworkTab({
     resetTimeline(0, {
       hardReset: true,
       scrub: false,
-      nextInfoText: formatDefaultInfo(totalDays),
+      nextInfoText: formatDefaultInfo(totalDays, labels),
     });
     setScrubbing(false);
     playbackStartProgressRef.current = 0;
@@ -234,7 +238,7 @@ export function NetworkTab({
     if (!storage.getAllEdges) {
       setEdges([]);
       setEdgeStatus("error");
-      setEdgeError("Semantic edge loading is unavailable in this environment.");
+      setEdgeError(labels.edgeLoadingUnavailable ?? "Semantic edge loading is unavailable in this environment.");
       return () => {
         cancelled = true;
       };
@@ -255,7 +259,7 @@ export function NetworkTab({
         console.error("[Network] getAllEdges error:", error);
         setEdges([]);
         setEdgeStatus("error");
-        setEdgeError("Semantic edge playback is temporarily unavailable.");
+        setEdgeError(labels.edgePlaybackUnavailable ?? "Semantic edge playback is temporarily unavailable.");
       });
 
     return () => {
@@ -271,7 +275,7 @@ export function NetworkTab({
       resetTimeline(0, {
         hardReset: true,
         scrub: false,
-        nextInfoText: formatDefaultInfo(0),
+        nextInfoText: formatDefaultInfo(0, labels),
       });
       return;
     }
@@ -288,9 +292,9 @@ export function NetworkTab({
     }
 
     if (!playing && currentDayRef.current === 0 && scrubToken === 0) {
-      setInfoText(formatDefaultInfo(totalDays));
+      setInfoText(formatDefaultInfo(totalDays, labels));
     }
-  }, [isActive, playing, resetTimeline, scrubToken, startReplay, totalDays]);
+  }, [isActive, labels, playing, resetTimeline, scrubToken, startReplay, totalDays]);
 
   useEffect(() => {
     const wasActive = previousIsActiveRef.current;
@@ -354,14 +358,14 @@ export function NetworkTab({
 
     if (totalDays > 0 && !playing && currentDay === 0 && scrubToken === 0) {
       previousDayRef.current = 0;
-      setInfoText(formatDefaultInfo(totalDays));
+      setInfoText(formatDefaultInfo(totalDays, labels));
       return;
     }
 
     if (didScrub) {
       previousScrubTokenRef.current = scrubToken;
       previousDayRef.current = currentDay;
-      setInfoText(`${visibleCount} conversations visible`);
+      setInfoText(`${visibleCount} ${labels.conversationsVisible ?? "conversations visible"}`);
       return;
     }
 
@@ -377,18 +381,19 @@ export function NetworkTab({
       }
 
       if (latestBirth) {
-        setInfoText(formatBirthInfo(latestBirth.label, latestBirth.platform));
+        setInfoText(formatBirthInfo(latestBirth.label, latestBirth.platform, labels));
       } else if (!playing) {
-        setInfoText(`${visibleCount} conversations visible`);
+        setInfoText(`${visibleCount} ${labels.conversationsVisible ?? "conversations visible"}`);
       }
     } else if (!playing && totalDays > 0 && currentDay > 0) {
-      setInfoText(`${visibleCount} conversations visible`);
+      setInfoText(`${visibleCount} ${labels.conversationsVisible ?? "conversations visible"}`);
     }
 
     previousDayRef.current = currentDay;
   }, [
     currentDay,
     dataset.data.nodes,
+    labels,
     playing,
     scrubToken,
     totalDays,
@@ -446,7 +451,7 @@ export function NetworkTab({
     edgeStatus === "error"
       ? edgeError
       : edgeStatus === "ready" && dataset.data.nodes.length > 1 && dataset.data.edges.length === 0
-        ? "No semantic links yet. Playback still shows how conversations accumulated over time."
+        ? labels.noSemanticLinks ?? "No semantic links yet. Playback still shows how conversations accumulated over time."
         : null;
 
   if (dataset.data.nodes.length === 0) {
@@ -455,14 +460,13 @@ export function NetworkTab({
         <div className="flex min-h-full w-full flex-col justify-center gap-3 px-6 py-8 md:px-8">
           <div className="max-w-sm">
             <p className="text-sm font-medium text-text-primary">
-              Your temporal network will appear here.
+              {labels.emptyTitle ?? "Your temporal network will appear here."}
             </p>
             <p className="mt-2 text-sm font-sans text-text-secondary">
-              Capture a few conversations first, then reopen Network to watch the graph
-              evolve over time.
+              {labels.emptyDesc ?? "Capture a few conversations first, then reopen Network to watch the graph evolve over time."}
             </p>
           </div>
-          <GraphLegend />
+          <GraphLegend edgeLabel={labels.edgeSemanticSimilarity} />
         </div>
       </div>
     );
@@ -474,7 +478,7 @@ export function NetworkTab({
         <div className="relative h-[420px] bg-bg-tertiary">
           {edgeStatus === "loading" && (
             <div className="pointer-events-none absolute left-0 top-0 z-10 rounded-full bg-bg-primary/85 px-2.5 py-1 text-[11px] font-sans text-text-tertiary backdrop-blur-sm">
-              Building graph...
+              {labels.buildingGraph ?? "Building graph..."}
             </div>
           )}
           <TemporalGraph
@@ -492,7 +496,7 @@ export function NetworkTab({
         </div>
 
         <div className="text-[11px] font-sans text-text-tertiary">
-          Trend · daily new conversations
+          {labels.trendLabel ?? "Trend · daily new conversations"}
         </div>
 
         <TimeBar
@@ -503,6 +507,7 @@ export function NetworkTab({
           onChange={handleScrubChange}
           onScrubStart={handleScrubStart}
           onScrubEnd={handleScrubEnd}
+          ariaLabel={labels.trendScrubberAriaLabel}
         />
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -511,11 +516,11 @@ export function NetworkTab({
             onClick={handleReplay}
             className="rounded-full border border-border-subtle bg-bg-primary px-3 py-1.5 text-[12px] font-sans text-text-primary transition-colors hover:bg-bg-secondary"
           >
-            Replay
+            {labels.replay ?? "Replay"}
           </button>
 
           <span className="text-[11px] font-sans text-text-tertiary">
-            Drag the trend line to pause on a moment.
+            {labels.dragHint ?? "Drag the trend line to pause on a moment."}
           </span>
         </div>
 
@@ -525,7 +530,7 @@ export function NetworkTab({
 
         <div className="min-h-[16px] text-[11px] font-sans text-text-tertiary">{infoText}</div>
 
-        <GraphLegend />
+        <GraphLegend edgeLabel={labels.edgeSemanticSimilarity} />
       </div>
 
       {selectedGraphNode && selectedConversation && (
@@ -542,7 +547,7 @@ export function NetworkTab({
                 className="mb-4 flex items-center gap-2 text-sm font-sans text-text-secondary transition-colors hover:text-text-primary"
               >
                 <X strokeWidth={1.5} className="h-4 w-4" />
-                <span>Close</span>
+                <span>{labels.close ?? "Close"}</span>
               </button>
 
               <h2 className="mb-3 text-lg font-serif font-normal text-text-primary">
@@ -557,7 +562,7 @@ export function NetworkTab({
                   {getPlatformLabel(selectedConversation.platform)}
                 </span>
                 <span className="text-xs font-sans text-text-tertiary">
-                  Started {formatStartedLabel(getConversationOriginAt(selectedConversation))}
+                  {labels.started ?? "Started"} {formatStartedLabel(getConversationOriginAt(selectedConversation))}
                 </span>
                 {selectedConversation.topic_id !== null && topicMap.get(selectedConversation.topic_id) && (
                   <span className="text-xs font-sans text-text-tertiary">
@@ -565,26 +570,26 @@ export function NetworkTab({
                   </span>
                 )}
                 {selectedConversation.is_starred && (
-                  <span className="text-xs font-sans text-text-tertiary">· Starred</span>
+                  <span className="text-xs font-sans text-text-tertiary">· {labels.starred ?? "Starred"}</span>
                 )}
               </div>
 
               <div className="mb-6 rounded-lg bg-bg-surface-card p-3">
                 <div className="mb-2 flex flex-wrap items-center gap-3 text-[11px] font-sans text-text-secondary">
-                  <span>{selectedConversation.message_count ?? 0} messages</span>
-                  <span>{connectedNodes.length} semantic links</span>
+                  <span>{selectedConversation.message_count ?? 0} {labels.messages ?? "messages"}</span>
+                  <span>{connectedNodes.length} {labels.semanticLinks ?? "semantic links"}</span>
                 </div>
                 <p className="text-xs font-sans text-text-secondary">
                   {selectedConversation.snippet?.trim()
                     ? selectedConversation.snippet
-                    : "No preview snippet available for this conversation yet."}
+                    : labels.noPreviewSnippet ?? "No preview snippet available for this conversation yet."}
                 </p>
               </div>
 
               {selectedConversation.tags.length > 0 && (
                 <div className="mb-6">
                   <h3 className="mb-2 text-xs font-sans font-medium uppercase tracking-[0.08em] text-text-tertiary">
-                    Tags
+                    {labels.tags ?? "Tags"}
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {selectedConversation.tags.map((tag) => (
@@ -601,11 +606,11 @@ export function NetworkTab({
 
               <div className="mb-6">
                 <h3 className="mb-2 text-xs font-sans font-medium uppercase tracking-[0.08em] text-text-tertiary">
-                  Connected conversations
+                  {labels.connectedConversations ?? "Connected conversations"}
                 </h3>
                 {connectedNodes.length === 0 ? (
                   <p className="text-xs font-sans text-text-secondary">
-                    No semantic links for this node yet.
+                    {labels.noSemanticLinksForNode ?? "No semantic links for this node yet."}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -618,15 +623,15 @@ export function NetworkTab({
                       >
                         <div className="min-w-0">
                           <div className="truncate text-sm font-sans text-text-primary">
-                            {entry.conversation?.title || entry.node?.label || `Conversation ${entry.id}`}
+                            {entry.conversation?.title || entry.node?.label || (labels.conversationN ?? "Conversation {id}").replace("{id}", String(entry.id))}
                           </div>
                           <div className="mt-1 text-[11px] font-sans text-text-tertiary">
                             {entry.conversation
                               ? getPlatformLabel(entry.conversation.platform)
-                              : "Unknown platform"}
+                              : labels.unknownPlatform ?? "Unknown platform"}
                             {entry.topicName ? ` · ${entry.topicName}` : ""}
                             {entry.node && entry.node.timelineDay > currentDay
-                              ? " · appears later in replay"
+                              ? ` · ${labels.appearsLaterInReplay ?? "appears later in replay"}`
                               : ""}
                           </div>
                         </div>
@@ -645,7 +650,7 @@ export function NetworkTab({
                   onClick={handleViewInLibrary}
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-primary px-4 py-2.5 text-sm font-sans font-medium text-white transition-all hover:bg-accent-primary/90"
                 >
-                  <span>View in Library</span>
+                  <span>{labels.viewInLibrary ?? "View in Library"}</span>
                   <ArrowRight strokeWidth={1.5} className="h-4 w-4" />
                 </button>
               )}

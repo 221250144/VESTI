@@ -123,7 +123,37 @@ const DEFAULT_LABELS: DashboardLabels = {
     exportFailed: "Could not export this note to Obsidian.",
   },
   explore: {},
-  network: {},
+  network: {
+    emptyTitle: "Your temporal network will appear here.",
+    emptyDesc: "Capture a few conversations first, then reopen Network to watch the graph evolve over time.",
+    noConversationsYet: "No conversations captured yet.",
+    replayInfo: "This replay runs the full timeline in 8 seconds, even when everything was captured today.",
+    newConversationOn: "+ New conversation on {platform}",
+    conversationOn: "+ {label} · {platform}",
+    buildingGraph: "Building graph...",
+    trendLabel: "Trend · daily new conversations",
+    noSemanticLinks: "No semantic links yet. Playback still shows how conversations accumulated over time.",
+    dragHint: "Drag the trend line to pause on a moment.",
+    replay: "Replay",
+    edgeLoadingUnavailable: "Semantic edge loading is unavailable in this environment.",
+    edgePlaybackUnavailable: "Semantic edge playback is temporarily unavailable.",
+    close: "Close",
+    started: "Started",
+    messages: "messages",
+    semanticLinks: "semantic links",
+    noPreviewSnippet: "No preview snippet available for this conversation yet.",
+    tags: "Tags",
+    connectedConversations: "Connected conversations",
+    noSemanticLinksForNode: "No semantic links for this node yet.",
+    viewInLibrary: "View in Library",
+    edgeSemanticSimilarity: "edge = semantic similarity",
+    trendScrubberAriaLabel: "Conversation trend scrubber",
+    conversationsVisible: "conversations visible",
+    appearsLaterInReplay: "appears later in replay",
+    starred: "Starred",
+    unknownPlatform: "Unknown platform",
+    conversationN: "Conversation {id}",
+  },
 };
 
 type DashboardProps = {
@@ -584,6 +614,7 @@ export function VestiDashboard({
                 themeMode={themeMode}
                 isActive={activeTab === "network"}
                 onSelectConversation={handleOpenConversation}
+                labels={labels.network}
               />
             </div>
           )}

@@ -342,7 +342,7 @@ export function BatchActionBar({
                 className="data-export-btn"
                 disabled={deleteBusy}
               >
-                Cancel
+                {t.common.cancel}
               </button>
               <button
                 type="button"

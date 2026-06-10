@@ -275,8 +275,8 @@ export function TimelinePage({
     ) => {
       const actionHint =
         action === "download"
-          ? `Saved as ${result.filename}.`
-          : "Copied export to clipboard.";
+          ? t.timeline.batch.savedAs.replace("{filename}", result.filename)
+          : t.timeline.batch.copiedToClipboard;
 
       if (
         result.notice?.title ||
@@ -294,19 +294,22 @@ export function TimelinePage({
         };
       }
 
+      const formatExt = result.filename.split(".").pop()?.toUpperCase() || "";
       return {
         message:
           action === "download"
             ? result.notice
-            ? `${result.notice.message} Saved as ${result.filename}.`
-              : `Exported ${result.filename}`
+              ? `${result.notice.message} ${t.timeline.batch.savedAs.replace("{filename}", result.filename)}`
+              : t.timeline.batch.exported.replace("{filename}", result.filename)
             : result.notice
-              ? `${result.notice.message} Copied export to clipboard.`
-              : `Copied ${result.filename.split(".").pop()?.toUpperCase() || "export"} export to clipboard.`,
+              ? `${result.notice.message} ${t.timeline.batch.copiedToClipboard}`
+              : (formatExt
+                  ? t.timeline.batch.copiedFormatToClipboard.replace("{format}", formatExt)
+                  : t.timeline.batch.copiedToClipboard),
         tone: result.notice?.tone ?? "default",
       };
     },
-    []
+    [t]
   );
 
   const runExportAction = useCallback(
@@ -334,15 +337,15 @@ export function TimelinePage({
             setBatchFeedback(buildExportFeedback(result, "copy"));
           } catch (error) {
             setBatchFeedback({
-              message: "Generated export could not be copied to the clipboard.",
+              message: t.timeline.batch.clipboardFailed,
               tone: "error",
               title: result.notice?.title,
               detail:
                 result.notice?.detail ||
                 getErrorMessage(error),
               hint: result.notice?.hint
-                ? `${result.notice.hint} Check clipboard permissions or use Download instead.`
-                : "Check clipboard permissions or use Download instead.",
+                ? `${result.notice.hint} ${t.timeline.batch.clipboardHint}`
+                : t.timeline.batch.clipboardHint,
             });
           }
         }
@@ -350,7 +353,7 @@ export function TimelinePage({
         setBatchFeedback({
           message:
             action === "copy"
-              ? "Generated export could not be copied to the clipboard."
+              ? t.timeline.batch.clipboardFailed
               : getErrorMessage(error),
           tone: "error",
           detail:
@@ -359,7 +362,7 @@ export function TimelinePage({
               : undefined,
           hint:
             action === "copy"
-              ? "Check clipboard permissions or use Download instead."
+              ? t.timeline.batch.clipboardHint
               : undefined,
         });
       } finally {
@@ -375,6 +378,7 @@ export function TimelinePage({
       markCopySuccess,
       selectedConversations,
       selectedExportFormat,
+      t,
     ]
   );
 
@@ -527,7 +531,7 @@ export function TimelinePage({
           <div className="threads-header-actions">
             <button
               type="button"
-              aria-label="Search conversations"
+              aria-label={t.timeline.searchAriaLabel}
               onClick={handleOpenSearch}
               className="threads-header-icon-btn"
             >
@@ -535,7 +539,7 @@ export function TimelinePage({
             </button>
             <button
               type="button"
-              aria-label="Filter conversations"
+              aria-label={t.timeline.filterAriaLabel}
               onClick={handleToggleFilter}
               className={`threads-header-icon-btn ${
                 headerMode === "filter"

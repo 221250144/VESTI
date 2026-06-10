@@ -20,6 +20,7 @@ interface TimeBarProps {
   onChange: (day: number) => void;
   onScrubStart?: () => void;
   onScrubEnd?: () => void;
+  ariaLabel?: string;
 }
 
 type Point = {
@@ -187,6 +188,7 @@ export function TimeBar({
   onChange,
   onScrubStart,
   onScrubEnd,
+  ariaLabel,
 }: TimeBarProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const draggingRef = useRef(false);
@@ -369,7 +371,7 @@ export function TimeBar({
   return (
     <canvas
       ref={canvasRef}
-      aria-label="Conversation trend scrubber"
+      aria-label={ariaLabel ?? "Conversation trend scrubber"}
       className="block h-[56px] w-full cursor-crosshair"
       style={{ touchAction: "none" }}
     />

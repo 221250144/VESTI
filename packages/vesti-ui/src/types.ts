@@ -887,5 +887,35 @@ export interface DashboardLabels {
     openSidebar: string;
   };
   explore: Record<string, string>;
-  network: Record<string, string>;
+  network: {
+    emptyTitle: string;
+    emptyDesc: string;
+    noConversationsYet: string;
+    replayInfo: string;
+    newConversationOn: string;
+    conversationOn: string;
+    buildingGraph: string;
+    trendLabel: string;
+    noSemanticLinks: string;
+    dragHint: string;
+    replay: string;
+    edgeLoadingUnavailable: string;
+    edgePlaybackUnavailable: string;
+    close: string;
+    started: string;
+    messages: string;
+    semanticLinks: string;
+    noPreviewSnippet: string;
+    tags: string;
+    connectedConversations: string;
+    noSemanticLinksForNode: string;
+    viewInLibrary: string;
+    edgeSemanticSimilarity: string;
+    trendScrubberAriaLabel: string;
+    conversationsVisible: string;
+    appearsLaterInReplay: string;
+    starred: string;
+    unknownPlatform: string;
+    conversationN: string;
+  };
 }
