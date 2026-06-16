@@ -976,7 +976,7 @@ export function ExploreTab({
                   </p>
                 ) : (
                   <div
-                    className="prose prose-slate max-w-none prose-p:leading-relaxed prose-p:text-text-primary prose-li:leading-relaxed prose-li:text-text-primary"
+                    className="prose prose-slate dark:prose-invert max-w-none prose-headings:text-text-primary prose-p:leading-relaxed prose-p:text-text-primary prose-li:leading-relaxed prose-li:text-text-primary prose-strong:text-text-primary prose-em:text-text-primary prose-code:text-text-primary prose-a:text-accent-primary prose-blockquote:text-text-secondary"
                     dangerouslySetInnerHTML={{ __html: html || "" }}
                   />
                 )}
