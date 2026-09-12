@@ -1115,7 +1115,10 @@ export async function generateWeeklyGrowthReportV2(
       const first = await callInference(
         {
           ...settings,
-          maxTokens: Math.min(settings.maxTokens, WEEKLY_GROWTH_MAX_TOKENS),
+          maxTokens:
+            settings.maxTokens === null
+              ? null
+              : Math.min(settings.maxTokens, WEEKLY_GROWTH_MAX_TOKENS),
         },
         primaryPrompt,
         {

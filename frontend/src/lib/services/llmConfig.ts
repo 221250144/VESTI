@@ -37,13 +37,13 @@ export const DEFAULT_BACKUP_MODEL = "qwen-turbo";
 export const LEGACY_KIMI_K2_5_MODEL = KIMI_K2_5_MODEL;
 export const LEGACY_STEP_3_5_FLASH_MODEL = STEP_3_5_FLASH_MODEL;
 
-export const DEFAULT_MAX_TOKENS = 1600;
+export const DEFAULT_MAX_TOKENS: number | null = null;
 const LEGACY_DEFAULT_MAX_TOKENS = 800;
-const MAX_TOKENS_CAP = 1600;
+const LEGACY_PROXY_MAX_TOKENS = 1600;
 
-// BYOK model whitelist: recommended models for the unified AI gateway.
-// We keep legacy ModelScope / Moonshot / StepFun IDs so existing BYOK users don't break.
-export const BYOK_MODEL_WHITELIST = [
+// Recommended model IDs for the model picker. This is intentionally not an
+// allowlist: both Demo proxy and BYOK pass any non-empty model ID through.
+export const RECOMMENDED_LLM_MODELS = [
   DEFAULT_STABLE_MODEL,
   DEFAULT_BACKUP_MODEL,
   "qwen-max",
@@ -69,16 +69,13 @@ export const FUTURE_MOONSHOT_DIRECT_EXPORT_MODEL_CANDIDATES = [
 
 export type ProxyRoute = "chat" | "embeddings";
 
-const BYOK_MODEL_SET = new Set<string>(BYOK_MODEL_WHITELIST);
-
 function normalizeMode(mode: LlmAccessMode | undefined): LlmAccessMode {
   return mode === "custom_byok" ? "custom_byok" : "demo_proxy";
 }
 
 export function sanitizeByokModelId(modelId: string | null | undefined): string {
   const candidate = (modelId || "").trim();
-  if (!candidate) return DEFAULT_STABLE_MODEL;
-  return BYOK_MODEL_SET.has(candidate) ? candidate : DEFAULT_STABLE_MODEL;
+  return candidate || DEFAULT_STABLE_MODEL;
 }
 
 function normalizeThinkPolicy(
@@ -117,13 +114,31 @@ function normalizeByokBaseUrl(value: string | undefined): string {
   return trimSlashes(raw) + "/";
 }
 
-function normalizeMaxTokens(value: number | undefined): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+function normalizeMaxTokens(
+  value: number | null | undefined,
+  mode: LlmAccessMode,
+  persistedMode: LlmConfig["maxTokensMode"]
+): number | null {
+  if (persistedMode === "auto") {
     return DEFAULT_MAX_TOKENS;
   }
 
-  const normalized = Math.max(1, Math.min(Math.floor(value), MAX_TOKENS_CAP));
-  if (normalized === LEGACY_DEFAULT_MAX_TOKENS) {
+  if (
+    value === null ||
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value <= 0
+  ) {
+    return DEFAULT_MAX_TOKENS;
+  }
+
+  const normalized = Math.floor(value);
+  if (
+    persistedMode !== "manual" &&
+    mode === "demo_proxy" &&
+    (normalized === LEGACY_DEFAULT_MAX_TOKENS ||
+      normalized === LEGACY_PROXY_MAX_TOKENS)
+  ) {
     return DEFAULT_MAX_TOKENS;
   }
 
@@ -188,6 +203,7 @@ export function buildDefaultLlmSettings(now = Date.now()): LlmConfig {
     modelId: DEFAULT_STABLE_MODEL,
     temperature: 0.3,
     maxTokens: DEFAULT_MAX_TOKENS,
+    maxTokensMode: "auto",
     updatedAt: now,
     mode: "demo_proxy",
     proxyBaseUrl: DEFAULT_PROXY_BASE_URL,
@@ -216,7 +232,12 @@ export function normalizeLlmSettings(
   const proxyBaseUrl = getProxyBaseUrl(settings);
   const proxyUrl = getProxyRouteUrl({ proxyBaseUrl, proxyUrl: settings.proxyUrl }, "chat");
   const proxyServiceToken = (settings.proxyServiceToken || "").trim();
-  const maxTokens = normalizeMaxTokens(settings.maxTokens);
+  const maxTokens = normalizeMaxTokens(
+    settings.maxTokens,
+    mode,
+    settings.maxTokensMode
+  );
+  const maxTokensMode = maxTokens === null ? "auto" : "manual";
 
   if (mode === "demo_proxy") {
     return {
@@ -224,14 +245,15 @@ export function normalizeLlmSettings(
       ...settings,
       provider: "openai_compatible",
       baseUrl: DEFAULT_BYOK_BASE_URL,
-      modelId: DEFAULT_STABLE_MODEL,
+      modelId,
       maxTokens,
+      maxTokensMode,
       mode,
       proxyBaseUrl,
       proxyUrl,
       proxyServiceToken,
       gatewayLock: "openai_compatible",
-      customModelId: DEFAULT_STABLE_MODEL,
+      customModelId: sanitizeByokModelId(settings.customModelId),
       streamMode: settings.streamMode === "on" ? "on" : "off",
       reasoningPolicy:
         settings.reasoningPolicy === "auto" || settings.reasoningPolicy === "force"
@@ -252,6 +274,7 @@ export function normalizeLlmSettings(
     baseUrl: normalizeByokBaseUrl(settings.baseUrl),
     modelId: byokModelId,
     maxTokens,
+    maxTokensMode,
     mode,
     proxyBaseUrl,
     proxyUrl,

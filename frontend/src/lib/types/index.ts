@@ -749,7 +749,9 @@ export interface LlmConfig {
   apiKey: string
   modelId: string
   temperature: number
-  maxTokens: number
+  /** null delegates the output-token budget to the configured provider. */
+  maxTokens: number | null
+  maxTokensMode?: "auto" | "manual"
   updatedAt: number
   mode?: LlmAccessMode
   proxyBaseUrl?: string

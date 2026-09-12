@@ -4,8 +4,8 @@ import {
   type ProxyRoute,
 } from "./llmConfig";
 
-export const PROXY_TOTAL_TIMEOUT_MS = 90_000;
-export const PROXY_PRIMARY_ATTEMPT_TIMEOUT_MS = 60_000;
+export const PROXY_TOTAL_TIMEOUT_MS = 180_000;
+export const PROXY_PRIMARY_ATTEMPT_TIMEOUT_MS = 120_000;
 
 export interface ProxyResponseMetadata {
   requestId?: string;
@@ -75,11 +75,19 @@ async function fetchAttempt(
   externalSignal?.addEventListener("abort", onAbort, { once: true });
   const timer = setTimeout(() => controller.abort(new DOMException("Proxy request timed out", "TimeoutError")), timeoutMs);
   try {
-    return await fetchImpl(endpoint, {
+    const response = await fetchImpl(endpoint, {
       method: "POST",
       headers,
       body,
       signal: controller.signal,
+    });
+    // Demo chat/embedding routes return non-streaming JSON. The deadline and
+    // external cancellation must cover the body as well as the headers.
+    const payload = response.body ? await response.arrayBuffer() : null;
+    return new Response(payload, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
     });
   } finally {
     clearTimeout(timer);

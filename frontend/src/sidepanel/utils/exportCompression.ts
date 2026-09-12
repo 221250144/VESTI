@@ -571,9 +571,13 @@ function withExperimentalMaxTokens(
   settings: LlmConfig,
   maxTokens: number
 ): LlmConfig {
+  if (settings.maxTokens === null) {
+    return settings;
+  }
+
   return {
     ...settings,
-    maxTokens,
+    maxTokens: Math.min(settings.maxTokens, maxTokens),
   };
 }
 

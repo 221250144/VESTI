@@ -527,10 +527,13 @@ function buildPayload(
   const payload: Record<string, unknown> = {
     model: getEffectiveModelId(config),
     temperature: config.temperature,
-    max_tokens: config.maxTokens,
     messages,
     stream: false,
   };
+
+  if (config.maxTokens !== null) {
+    payload.max_tokens = config.maxTokens;
+  }
 
   if (modelProfile.thinkingParamPolicy === "force_false") {
     payload.enable_thinking = false;

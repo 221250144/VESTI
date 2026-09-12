@@ -31,7 +31,11 @@ export async function getLlmSettings(): Promise<LlmConfig | null> {
       }
 
       const normalized = normalizeLlmSettings(raw);
-      if (needsProxySettingsBackfill(raw)) {
+      if (
+        needsProxySettingsBackfill(raw) ||
+        raw.maxTokens !== normalized.maxTokens ||
+        raw.maxTokensMode !== normalized.maxTokensMode
+      ) {
         storage.set({ [STORAGE_KEY]: normalized }, () => {
           void chrome.runtime?.lastError;
         });

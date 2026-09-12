@@ -31,8 +31,7 @@ import {
 } from "~lib/services/captureSettingsService"
 import {
   buildDefaultLlmSettings,
-  BYOK_MODEL_WHITELIST,
-  DEFAULT_BACKUP_MODEL,
+  RECOMMENDED_LLM_MODELS,
   DEFAULT_BYOK_BASE_URL,
   DEFAULT_PROXY_BASE_URL,
   DEFAULT_PROXY_URL,
@@ -490,7 +489,6 @@ function resolveSettingsForMode(settings: LlmConfig): LlmConfig {
     return normalizeLlmSettings({
       ...next,
       mode,
-      modelId: DEFAULT_STABLE_MODEL,
       proxyBaseUrl:
         (next.proxyBaseUrl || next.proxyUrl || "").trim() ||
         DEFAULT_PROXY_BASE_URL,
@@ -1176,13 +1174,8 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
                     <div className="model-access-info-row">
                       <span className="model-access-info-key">{t.settings.modelAccess.primary}</span>
                       <span className="model-access-info-value">
-                        {DEFAULT_STABLE_MODEL}
-                      </span>
-                    </div>
-                    <div className="model-access-info-row">
-                      <span className="model-access-info-key">{t.settings.modelAccess.backup}</span>
-                      <span className="model-access-info-value">
-                        {DEFAULT_BACKUP_MODEL}
+                        {(llmSettings.modelId || DEFAULT_STABLE_MODEL).trim() ||
+                          DEFAULT_STABLE_MODEL}
                       </span>
                     </div>
                   </div>
@@ -1193,6 +1186,27 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
                   <p className="text-[11px] font-sans text-text-tertiary">
                     {t.settings.modelAccess.proxyDesc}
                   </p>
+                  <div className="model-access-field-group">
+                    <label className="model-access-input-label">
+                      {t.settings.modelAccess.modelLabel}{" "}
+                      <span className="model-access-label-optional">
+                        - {t.settings.modelAccess.recommendedModels}
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      list="vesti-llm-model-recommendations"
+                      value={llmSettings.modelId}
+                      onChange={(event) =>
+                        setLlmSettingsState((prev) => ({
+                          ...prev,
+                          modelId: event.target.value
+                        }))
+                      }
+                      className="model-access-input"
+                      placeholder={t.settings.modelAccess.modelPlaceholder}
+                    />
+                  </div>
                   <div className="model-access-info-block">
                     <div className="model-access-info-row">
                       <span className="model-access-info-key">{t.settings.modelAccess.proxyRoute}</span>
@@ -1334,32 +1348,60 @@ export function SettingsPage({ onNavigateToData }: SettingsPageProps) {
                     <label className="model-access-input-label">
                       {t.settings.modelAccess.modelLabel}{" "}
                       <span className="model-access-label-optional">
-                        - {t.settings.modelAccess.whitelistOnly}
+                        - {t.settings.modelAccess.recommendedModels}
                       </span>
                     </label>
-                    <select
-                      value={sanitizeByokModelId(
-                        llmSettings.customModelId ?? llmSettings.modelId
-                      )}
+                    <input
+                      type="text"
+                      list="vesti-llm-model-recommendations"
+                      value={llmSettings.customModelId ?? llmSettings.modelId}
                       onChange={(event) =>
-                        setLlmSettingsState((prev) =>
-                          normalizeLlmSettings({
+                        setLlmSettingsState((prev) => ({
                             ...prev,
                             customModelId: event.target.value,
                             modelId: event.target.value
-                          })
-                        )
+                          }))
                       }
-                      className="model-access-input">
-                      {BYOK_MODEL_WHITELIST.map((model) => (
-                        <option key={model} value={model}>
-                          {model}
-                        </option>
-                      ))}
-                    </select>
+                      className="model-access-input"
+                      placeholder={t.settings.modelAccess.modelPlaceholder}
+                    />
                   </div>
                 </>
               )}
+
+              <datalist id="vesti-llm-model-recommendations">
+                {RECOMMENDED_LLM_MODELS.map((model) => (
+                  <option key={model} value={model} />
+                ))}
+              </datalist>
+
+              <div className="model-access-field-group">
+                <label className="model-access-input-label">
+                  {t.settings.modelAccess.maxTokensLabel}{" "}
+                  <span className="model-access-label-optional">
+                    - {t.settings.modelAccess.maxTokensOptional}
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={llmSettings.maxTokens ?? ""}
+                  onChange={(event) => {
+                    const rawValue = event.target.value.trim()
+                    setLlmSettingsState((prev) => ({
+                      ...prev,
+                      maxTokens: rawValue === "" ? null : Number(rawValue),
+                      maxTokensMode: rawValue === "" ? "auto" : "manual"
+                    }))
+                  }}
+                  className="model-access-input"
+                  placeholder={t.settings.modelAccess.maxTokensPlaceholder}
+                />
+                <p className="text-[11px] font-sans text-text-tertiary">
+                  {t.settings.modelAccess.maxTokensHint}
+                </p>
+              </div>
 
               <div className="model-access-actions">
                 <button
